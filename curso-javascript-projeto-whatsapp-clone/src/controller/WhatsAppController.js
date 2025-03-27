@@ -77,6 +77,27 @@ class WhatsAppController{
             return this.classList.contains(name);
         }
        
+        //Retornando um FormData com os dados de quem o chama(this)
+        HTMLFormElement.prototype.getForm = function(){
+            return new FormData(this);
+        }
+
+        //Construindo um JSON pelo form data
+        HTMLFormElement.prototype.toJSON = function(){
+            let json = {};
+
+            this.getForm().forEach((value, key)=>{
+
+                json[key] = value;
+
+            });
+
+            return json;
+
+        }
+
+
+
 
     }
 
@@ -97,6 +118,34 @@ class WhatsAppController{
 
         });
 
+        //Adicionar uma nova foto de perfil
+        this.el.photoContainerEditProfile.on('click', e=>{
+
+            this.el.inputProfilePhoto.click();
+
+        });
+
+        //Adicionar um novo nome no perfil
+
+        this.el.inputNamePanelEditProfile.on('keypress', e=>{
+
+            if(e.key === 'Enter'){
+
+                e.preventDefault();
+                this.el.btnSavePanelEditProfile.click();
+
+            }
+
+        });
+
+        //Trazer o que está no inputName do perfil ao clicar no btnSave
+        this.el.btnSavePanelEditProfile.on('click', e=>{
+
+            console.log(this.el.inputNamePanelEditProfile.innerHTML);
+
+        });
+
+
         //Fechar o perfil
         this.el.btnClosePanelEditProfile.on('click', event =>{
             this.el.panelEditProfile.removeClass('open');
@@ -112,7 +161,15 @@ class WhatsAppController{
 
         });
 
-        //Fecha o adiconar um novo contato
+        //Capturando os dados no adicionar contato quando o botão submit é criado usando o Formdata
+        this.el.formPanelAddContact.on('submit', e=>{
+            e.preventDefault();
+            //Construindo os dados com Formdata(passando id do elemento, os campos são construídos automaticamente)
+            let formData = new FormData(this.el.formPanelAddContact);
+            
+        });
+
+        //Fecha o adicionar um novo contato
         this.el.btnClosePanelAddContact.on('click', e=>{
 
             this.el.panelAddContact.removeClass('open');
@@ -120,6 +177,7 @@ class WhatsAppController{
         });
 
 
+      
     }
 
     closeAllLeftPanel(){
