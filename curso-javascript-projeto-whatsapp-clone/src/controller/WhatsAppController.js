@@ -107,6 +107,10 @@ class WhatsAppController{
         
         //Eventos do Painel a esquerda
 
+        /*
+            Eventos de Perfil
+        */
+
         //Mostrar o perfil
         this.el.myPhoto.on('click', event =>{
             this.closeAllLeftPanel();
@@ -151,6 +155,12 @@ class WhatsAppController{
             this.el.panelEditProfile.removeClass('open');
         });
 
+        
+        /*
+            Eventos de Adicionar um novo contato
+        */
+
+
         //Adicionar um novo contato
         this.el.btnNewContact.on('click', event =>{
             this.closeAllLeftPanel();
@@ -176,8 +186,120 @@ class WhatsAppController{
 
         });
 
+        /*
+            Eventos do Chat
+        */
+
+        //Adicionando um evento a cada chat dos contatos que aparecem(classe ".contact-item").
+        this.el.contactsMessagesList.querySelectorAll('.contact-item').forEach(item=>{
+
+            item.on('click', e=>{
+                //Adicionando um evento para aquele contato especifico mostrando o chat e ocultando outros paineis.
+                this.el.home.hide();
+                this.el.main.css({
+                    display: 'flex'
+                });
+
+            });
+
+        });
+
+        //Eventos do Painel da direita
+        
+        //Adicionando um evento no botão de anexo, abrindo as opções
+        this.el.btnAttach.on('click', e=>{
+
+            e.stopPropagation();
+            this.el.menuAttach.addClass('open');
+            document.addEventListener('click', this.closeMenuAttach.bind(this));
+
+        });
+
+        //Evento no botão de anexo, photo
+
+        this.el.btnAttachPhoto.on('click', e=>{
+            this.el.inputPhoto.click();
+        });
+
+        this.el.inputPhoto.on('change', e=>{
+            [...this.el.inputPhoto.files].forEach(file=>{
+
+            });
+        });
+
+        //Evento no botão de anexo, camera
+
+        this.el.btnAttachCamera.on('click', e=>{
+
+            this.closeAllMainPanel();
+            this.el.panelCamera.addClass('open');
+            this.el.panelCamera.css({
+                'height': 'calc(100% -120px)'
+            });
+
+        });
+
+        this.el.btnClosePanelCamera.on('click', e=>{
+
+            this.closeAllMainPanel();
+            this.el.panelMessagesContainer.show();
+        });
+
+        this.el.btnTakePicture.on('click', e=>{
+
+
+            
+        });
+
+
+
+        //Evento no botão de anexo, document
+
+        this.el.btnAttachDocument.on('click', e=>{
+            this.closeAllMainPanel();
+            this.el.panelDocumentPreview.addClass('open');
+            this.el.panelDocumentPreview.css({
+                'height': 'calc(100% -120px)'
+            });
+        });
+
+        this.el.btnClosePanelDocumentPreview.on('click', e=>{
+            this.closeAllMainPanel();
+            this.el.panelMessagesContainer.show();
+        });
+
+
+        this.el.btnSendDocument.on('click', e=>{
+            console.log('send document');
+        });
+
+
+        //Evento no botão de anexo, contact
+
+        this.el.btnAttachContact.on('click', e=>{
+
+            this.el.modalContacts.show();
+        });
+
+        this.el.btnCloseModalContacts.on('click', e=>{
+
+            this.el.modalContacts.hide();
+        });
 
       
+    }
+
+    closeAllMainPanel(){
+        this.el.panelMessagesContainer.hide();
+        this.el.panelDocumentPreview.removeClass('open');
+        this.el.panelCamera.removeClass('open');
+    }
+
+    closeMenuAttach(e){
+        
+        document.removeEventListener('click', this.closeMenuAttach);
+        this.el.menuAttach.removeClass('open');
+
     }
 
     closeAllLeftPanel(){
