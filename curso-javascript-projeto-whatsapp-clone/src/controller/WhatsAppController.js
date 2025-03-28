@@ -1,7 +1,7 @@
 
 import {Format} from './../util/format';
-
 import {CameraController} from "./CameraController";
+import {DocumentPreviewController} from './DocumentPreviewController';
 
 export class WhatsAppController{
     
@@ -281,8 +281,59 @@ export class WhatsAppController{
             this.closeAllMainPanel();
             this.el.panelDocumentPreview.addClass('open');
             this.el.panelDocumentPreview.css({
-                'height': 'calc(100% -120px)'
-            });
+                'height': 'calc(100% - 10px)' //alterado do video(120px) ve se isso nao vai dar problema
+              });
+
+            this.el.inputDocument.click();
+
+        });
+
+        this.el.inputDocument.on('change', e=>{
+
+            if(this.el.inputDocument.files.length){
+                let file = this.el.inputDocument.files[0];
+                
+                this._documentPreviewController = new DocumentPreviewController(file);
+                this._documentPreviewController.getPreviewData().then(result=>{
+
+                    this.el.imgPanelDocumentPreview.src = result.src;
+                    this.el.infoPanelDocumentPreview.innerHTML = result.info;
+                    this.el.imagePanelDocumentPreview.show();
+                    this.el.filePanelDocumentPreview.hide();
+
+                }).catch(err=>{
+
+
+                    switch(file.type){
+                        
+                        case 'application/vnd.ms-excel':
+                        case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+                            this.el.iconPanelDocumentPreview.className = 'jcxhw icon-doc-xls';
+                        break;
+
+                        case 'application/vnd.ms-powerpoint':
+                        case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+                            this.el.iconPanelDocumentPreview.className = 'jcxhw icon-doc-ppt';
+                        break;
+
+                        case 'application/msword':
+                        case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                            this.el.iconPanelDocumentPreview.className = 'jcxhw icon-doc-doc';
+                        break;
+
+                        default:
+                            this.el.iconPanelDocumentPreview.className = 'jcxhw icon-doc-generic';
+                        break;
+
+
+                    }
+                    this.el.filenamePanelDocumentPreview.innerHTML = file.name;
+                    this.el.imagePanelDocumentPreview.hide();
+                    this.el.filePanelDocumentPreview.show();
+
+                });
+            }
+
         });
 
         this.el.btnClosePanelDocumentPreview.on('click', e=>{
