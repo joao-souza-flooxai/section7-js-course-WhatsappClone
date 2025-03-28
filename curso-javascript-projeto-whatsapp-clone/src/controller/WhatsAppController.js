@@ -241,12 +241,13 @@ export class WhatsAppController{
               'height': 'calc(100% - 10px)' //alterado do video(120px) ve se isso nao vai dar problema
             });
       
-            this._camera = new CameraContoller(this.el.videoCamera);
+            this._camera = new CameraController(this.el.videoCamera);
           });
       
           this.el.btnClosePanelCamera.on('click', e=>{
             this.closeAllMainPanel();
             this.el.panelMessagesContainer.show();
+            this._camera.stop();
           })
       
           this.el.btnTakePicture.on('click', e=>{
