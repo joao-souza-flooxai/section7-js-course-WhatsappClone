@@ -1,4 +1,9 @@
-class WhatsAppController{
+
+import {Format} from './../util/format';
+
+import {CameraController} from "./CameraController";
+
+export class WhatsAppController{
     
     constructor(){
         
@@ -230,26 +235,23 @@ class WhatsAppController{
         //Evento no botão de anexo, camera
 
         this.el.btnAttachCamera.on('click', e=>{
-
-            this.closeAllMainPanel();
+            this.closeAllMainPanel()
             this.el.panelCamera.addClass('open');
             this.el.panelCamera.css({
-                'height': 'calc(100% -120px)'
+              'height': 'calc(100% - 10px)' //alterado do video(120px) ve se isso nao vai dar problema
             });
-
-        });
-
-        this.el.btnClosePanelCamera.on('click', e=>{
-
+      
+            this._camera = new CameraContoller(this.el.videoCamera);
+          });
+      
+          this.el.btnClosePanelCamera.on('click', e=>{
             this.closeAllMainPanel();
             this.el.panelMessagesContainer.show();
-        });
-
-        this.el.btnTakePicture.on('click', e=>{
-
-
-            
-        });
+          })
+      
+          this.el.btnTakePicture.on('click', e=>{
+            console.log("foto")
+          });
 
 
 
