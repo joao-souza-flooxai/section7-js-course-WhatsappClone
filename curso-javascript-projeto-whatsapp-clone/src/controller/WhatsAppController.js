@@ -291,6 +291,11 @@ export class WhatsAppController{
         this.el.inputDocument.on('change', e=>{
 
             if(this.el.inputDocument.files.length){
+                
+                this.el.panelDocumentPreview.css({
+                    'height': '1%' //alterado do video(120px) ve se isso nao vai dar problema
+                  });
+                
                 let file = this.el.inputDocument.files[0];
                 
                 this._documentPreviewController = new DocumentPreviewController(file);
@@ -301,8 +306,15 @@ export class WhatsAppController{
                     this.el.imagePanelDocumentPreview.show();
                     this.el.filePanelDocumentPreview.hide();
 
+                    this.el.panelDocumentPreview.css({
+                        'height': 'calc(100% - 10px)' //alterado do video(120px) ve se isso nao vai dar problema
+                      });
+
                 }).catch(err=>{
 
+                    this.el.panelDocumentPreview.css({
+                        'height': 'calc(100% - 10px)' //alterado do video(120px) ve se isso nao vai dar problema
+                      });
 
                     switch(file.type){
                         
