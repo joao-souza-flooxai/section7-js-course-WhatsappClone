@@ -286,7 +286,133 @@ class WhatsAppController{
             this.el.modalContacts.hide();
         });
 
-      
+        /*
+            Eventos da parte inferior direita: chat, emoji e audio
+        */
+
+        //Audio
+
+        this.el.btnSendMicrophone.on('click', ev=>{
+            this.el.recordMicrophone.show();
+            this.el.btnSendMicrophone.hide();
+            this.startRecordMicrophoneTime();
+        });
+
+        this.el.btnCancelMicrophone.on('click', ev=>{
+            this.closeRecordMicrophone();
+
+        });
+
+        this.el.btnFinishMicrophone.on('click', ev=>{
+            this.closeRecordMicrophone();
+
+        });
+
+        //Texto
+
+        this.el.inputText.on('keypress', e=>{
+            
+            if(e.key == 'Enter' && !e.ctrlKey){
+                e.preventDefault();
+                this.el.btnSend.click();
+            }
+        
+        });
+
+        this.el.inputText.on('keyup', ev=>{
+
+            if(this.el.inputText.textContent.length || this.el.inputText.querySelector('img')){
+
+                this.el.inputPlaceholder.hide();
+                this.el.btnSendMicrophone.hide();
+                this.el.btnSend.show();
+
+            }else{
+                this.el.inputPlaceholder.show();
+                this.el.btnSendMicrophone.show();
+                this.el.btnSend.hide();
+            }
+
+
+        });
+
+        this.el.btnSend.on('click', e=>{
+            console.log(this.el.inputText.innerHTML);
+        });
+
+        //Emoji
+
+        this.el.btnEmojis.on('click', e=>{
+            this.el.panelEmojis.toggleClass('open');
+        });
+
+        this.el.panelEmojis.querySelectorAll('.emojik').forEach(emoji=>{
+            emoji.on('click', e=>{
+                console.log(emoji.dataset.unicode);
+                let img = this.el.imgEmojiDefault.cloneNode();
+                
+                img.style.cssText = emoji.style.cssText;
+                img.dataset.unicode = emoji.dataset.unicode;
+                img.alt = emoji.dataset.unicode;
+
+                emoji.classList.forEach(name=>{
+                    img.classList.add(name);
+                });
+
+
+                let cursor = window.getSelection();
+                let inputText = this.el.inputText; 
+
+                // Garantir que a seleção esteja dentro do inputText
+                if (!cursor.focusNode || !inputText.contains(cursor.focusNode)) {
+                    inputText.focus();
+                    cursor = window.getSelection();
+                }
+
+                // Criar um range válido apenas dentro do inputText
+                let range = cursor.rangeCount ? cursor.getRangeAt(0) : document.createRange();
+
+                // Se o range não pertence ao inputText, redefinir para o final dele
+                if (!inputText.contains(range.commonAncestorContainer)) {
+                    range.selectNodeContents(inputText);
+                    range.collapse(false); // Move o cursor para o final do inputText
+                }
+
+                // Remover qualquer conteúdo selecionado antes de inserir o emoji
+                range.deleteContents();
+
+                // Criar o fragmento e inserir o emoji corretamente
+                let frag = document.createDocumentFragment();
+                frag.appendChild(img);
+
+                range.insertNode(frag);
+                range.setStartAfter(img);
+
+                // Atualizar a seleção para depois do emoji inserido
+                cursor.removeAllRanges();
+                cursor.addRange(range);
+
+                this.el.inputText.dispatchEvent(new Event('keyup'));
+
+            });
+        });
+
+
+    }
+
+    startRecordMicrophoneTime(){
+
+        let start = Date.now();
+
+        this._recordMicrophoneInterval = setInterval(()=>{
+            this.el.recordMicrophoneTimer.innerHTML = Format.toTime((Date.now() - start));
+        }, 100);
+    }
+
+    closeRecordMicrophone(){
+        this.el.recordMicrophone.hide();
+        this.el.btnSendMicrophone.show();
+        clearInterval(this._recordMicrophoneInterval);
     }
 
     closeAllMainPanel(){
