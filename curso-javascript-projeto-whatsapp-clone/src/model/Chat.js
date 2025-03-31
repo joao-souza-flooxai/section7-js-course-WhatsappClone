@@ -15,7 +15,7 @@ export class Chat extends Model{
     set timeStamp(value) {this._data.timeStamp = value; }
 
     static getRef(){
-        return Firebase.db().collection('/chats');
+        return Firebase.db().collection('chats');
     }
 
 
