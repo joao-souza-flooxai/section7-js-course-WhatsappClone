@@ -620,7 +620,7 @@ export class WhatsAppController{
 
         this.el.btnSend.on('click', e=>{
             Message.send(
-                this._contactActive,
+                this._contactActive.chatId,
                 this._user.email,
                 'text',
                 this.el.inputText.innerHTML
