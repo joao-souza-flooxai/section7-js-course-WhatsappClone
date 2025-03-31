@@ -3,6 +3,8 @@ import {Format} from './../util/format';
 import {CameraController} from "./CameraController";
 import {MicrophoneController} from "./MicrophoneController";
 import {DocumentPreviewController} from './DocumentPreviewController';
+import { Firebase } from './../util/Firebase';
+import { User } from './../model/User';
 
 export class WhatsAppController{
     
@@ -10,9 +12,37 @@ export class WhatsAppController{
         
 
         //Métodos inicializadores
+        this._fireabse = new Firebase();
+        this.initAuth();
         this.elementsPrototype();
         this.loadElements();
         this.initEvents();
+       
+    }
+    
+    initAuth(){
+        this._fireabse.initAuth()
+            .then((response)=>{
+
+                this._user = new User();
+
+                let userRef  = User.findByEmail(response.user.email);
+
+                userRef.set({
+                    name: response.user.displayName,
+                    email: response.user.email,
+                    photo: response.user.photoURL
+                }).then(()=>{
+                    this.el.appContent.css({
+                        display: 'flex'
+                    });
+                });
+
+                
+            })
+            .catch(err=>{
+                console.error(err);
+            });
     }
 
     //Caregando todos elementos que tem um id e transformando em atributos da classe WhatsappController automaticamente e dinamicamente.
