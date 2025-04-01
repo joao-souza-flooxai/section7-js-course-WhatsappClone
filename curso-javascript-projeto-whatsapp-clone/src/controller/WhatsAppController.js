@@ -1,5 +1,5 @@
 
-import {Format} from './../util/format';
+import {Format} from '../util/Format';
 import {CameraController} from "./CameraController";
 import {MicrophoneController} from "./MicrophoneController";
 import {DocumentPreviewController} from './DocumentPreviewController';
@@ -152,6 +152,10 @@ export class WhatsAppController{
 
     setActiveChat(contact){
 
+        if(this._contactActive){
+            Message.getRef(this._contactActive.chatId).onSnapshot(()=>{});
+        }
+
         this._contactActive = contact;
 
         this.el.activeName.innerHTML = contact.name; 
@@ -167,7 +171,50 @@ export class WhatsAppController{
         this.el.main.css({
             display: 'flex'
         });
-}
+        this.el.panelMessagesContainer.innerHTML = '';
+                            
+        Message.getRef(this._contactActive.chatId).orderBy('timeStamp')
+                      .onSnapshot(docs=>{
+
+                            let scrollTop = this.el.panelMessagesContainer.scrollTop;
+
+                            let scrollTopMax = (this.el.panelMessagesContainer.scrollHeight - this.el.panelMessagesContainer.offsetHeight);
+                            
+                            let autoScroll = (scrollTop >= scrollTopMax);
+
+                            docs.forEach(doc=>{
+                                
+                                let data = doc.data();
+                                data.id = doc.id;
+
+                                if(!this.el.panelMessagesContainer.querySelector('#_'+ data.id)){
+
+                                    
+
+                                    let message  = new Message();
+
+                                    message.fromJSON(data);
+    
+                                    let me = (data.from === this._user.email);
+
+                                    let view = message.getViewElement(me);
+
+                                    this.el.panelMessagesContainer.appendChild(view);
+                                    
+                                }
+
+                            });
+
+                            if(autoScroll){
+                                       
+                                    this.el.panelMessagesContainer.scrollTop = this.el.panelMessagesContainer.scrollHeight - this.el.panelMessagesContainer.offsetHeight;        
+
+                            }else{
+                                this.el.panelMessagesContainer.scrollTop = scrollTop;
+                            }
+
+                      });
+    }
 
 
     //Caregando todos elementos que tem um id e transformando em atributos da classe WhatsappController automaticamente e dinamicamente.
@@ -271,6 +318,21 @@ export class WhatsAppController{
         /*
             Eventos de Perfil
         */
+
+        //Evento de Procurar Contatos 
+        
+        this.el.inputSearchContacts.on('keyup', e=>{
+
+            if(this.el.inputSearchContacts.value.length > 0){
+                this.el.inputSearchContactsPlaceholder.hide();
+            }else{
+                this.el.inputSearchContactsPlaceholder.show();
+            }
+
+            this._user.getContacts(this.el.inputSearchContacts.value);
+
+
+        });
 
         //Mostrar o perfil
         this.el.myPhoto.on('click', event =>{
@@ -620,7 +682,7 @@ export class WhatsAppController{
 
         this.el.btnSend.on('click', e=>{
             Message.send(
-                this._contactActive.chatId,
+                this._contactActive.chatId ,
                 this._user.email,
                 'text',
                 this.el.inputText.innerHTML
