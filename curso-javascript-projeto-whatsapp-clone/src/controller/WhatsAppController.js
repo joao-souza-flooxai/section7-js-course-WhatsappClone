@@ -8,7 +8,7 @@ import { User } from './../model/User';
 import { Chat } from './../model/Chat';
 import { Message } from './../model/Message';
 import { Base64 } from "../util/Base64";
-
+import { ContactsController } from './ContactsController';
 
 export class WhatsAppController{
     
@@ -151,92 +151,104 @@ export class WhatsAppController{
         this._user.getContacts();
     }
 
-    setActiveChat(contact){
+    setActiveChat(contact) {
 
-        if(this._contactActive){
-            Message.getRef(this._contactActive.chatId).onSnapshot(()=>{});
+        if (this._contactActive) {
+            Message.getRef(this._contactActive.chatId).onSnapshot(() => { });
+        }
+
+        this.el.activeName.innerHTML = contact.name;
+        this.el.activeStatus.innerHTML = contact.status;
+
+        if (contact.photo) {
+            let img = this.el.activePhoto;
+            img.src = contact.photo;
+            img.show();
         }
 
         this._contactActive = contact;
 
-        this.el.activeName.innerHTML = contact.name; 
-        this.el.activeStatus.innerHTML = contact.status; 
+        this._messagesReceived = [];
 
-        if(contact.photo){
-            let img = this.el.activePhoto;
-            img.scr = contact.photo;
-            img.show();
-        }
+        Message.getRef(this._contactActive.chatId).orderBy("timeStamp").onSnapshot(docs => {
+
+            let scrollTop = this.el.panelMessagesContainer.scrollTop;
+            let scrollTopMax = this.el.panelMessagesContainer.scrollHeight - this.el.panelMessagesContainer.offsetHeight;
+
+            let autoScroll = (scrollTop >= scrollTopMax);
+
+            this.el.panelMessagesContainer.innerHTML = '';
+
+            docs.forEach(docMsg => {
+
+                let data = docMsg.data();
+
+                if (!this._messagesReceived.filter(msg => { return (msg === docMsg.id) }).length) {
+                    this._messagesReceived.push(docMsg.id);
+                }
+
+                let message = new Message();
+
+                message.fromJSON(data);
+
+                let messageEl = message.getViewElement((data.from === this._user.email));
+
+                this.el.panelMessagesContainer.appendChild(messageEl);
+
+                if (data.from !== this._user.email) {
+
+                    docMsg.ref.set({
+                        status: 'read'
+                    }, {
+                            merge: true
+                        });
+
+                }
+
+                if (data.type === 'contact') {
+
+                    messageEl.querySelector('.btn-message-send').on('click', e => {
+
+
+                        Chat.createIfNotExists(this._user.email, data.content.email).then(chat => {
+
+                            let contact = new User(data.content.email);
+
+                            contact.on('datachange', userData => {
+
+                                contact.chatId = chat.id;
+
+                                this._user.addContact(contact);
+
+                                this._user.chatId = chat.id;
+
+                                contact.addContact(this._user);
+
+                                this.setActiveChat(contact);
+
+                            });
+
+                        });
+
+                    });
+
+                }
+
+            });
+
+            if (autoScroll) {
+                this.el.panelMessagesContainer.scrollTop = (this.el.panelMessagesContainer.scrollHeight - this.el.panelMessagesContainer.offsetHeight);
+            } else {
+                this.el.panelMessagesContainer.scrollTop = scrollTop;
+            }
+
+        });
 
         this.el.home.hide();
         this.el.main.css({
             display: 'flex'
         });
-        this.el.panelMessagesContainer.innerHTML = '';
-                            
-        Message.getRef(this._contactActive.chatId).orderBy('timeStamp')
-                      .onSnapshot(docs=>{
 
-                            let scrollTop = this.el.panelMessagesContainer.scrollTop;
-
-                            let scrollTopMax = (this.el.panelMessagesContainer.scrollHeight - this.el.panelMessagesContainer.offsetHeight);
-                            
-                            let autoScroll = (scrollTop >= scrollTopMax);
-
-                            docs.forEach(doc=>{
-                                
-                                let data = doc.data();
-                                data.id = doc.id;
-
-                                
-                                let message  = new Message();
-
-                                let me = (data.from === this._user.email);
-                                
-                                message.fromJSON(data);
-
-                                if(!this.el.panelMessagesContainer.querySelector('#_'+ data.id)){           
-    
-                                   
-                                    if(!me){
-                                        doc.ref.set({
-                                            status: "read"
-                                        },{
-                                            merge: true
-                                        });
-                                    }
-
-                                    let view = message.getViewElement(me);
-
-                                    this.el.panelMessagesContainer.appendChild(view);
-                                    
-                                }else{
-
-                                    let view = message.getViewElement(me);
-
-                                    this.el.panelMessagesContainer.querySelector('#_'+ data.id).innerHTML = view.innerHTML;
-
-
-                                } 
-                                
-                                if(this.el.panelMessagesContainer.querySelector('#_'+ data.id) && me){
-                                    let msgEl= 
-                                    this.el.panelMessagesContainer.querySelector('#_'+ data.id);
-
-                                    msgEl.querySelector('.message-status').innerHTML = message.getStatusViewElement().outerHTML;
-                                }
-
-                            });
-
-                            if(autoScroll){
-                                       
-                                    this.el.panelMessagesContainer.scrollTop = this.el.panelMessagesContainer.scrollHeight - this.el.panelMessagesContainer.offsetHeight;        
-
-                            }else{
-                                this.el.panelMessagesContainer.scrollTop = scrollTop;
-                            }
-
-                      });
     }
 
 
@@ -342,21 +354,7 @@ export class WhatsAppController{
             Eventos de Perfil
         */
 
-        //Evento de Procurar Contatos 
         
-        this.el.inputSearchContacts.on('keyup', e=>{
-
-            if(this.el.inputSearchContacts.value.length > 0){
-                this.el.inputSearchContactsPlaceholder.hide();
-            }else{
-                this.el.inputSearchContactsPlaceholder.show();
-            }
-
-            this._user.getContacts(this.el.inputSearchContacts.value);
-
-
-        });
-
         //Mostrar o perfil
         this.el.myPhoto.on('click', event =>{
             this.closeAllLeftPanel();
@@ -407,6 +405,22 @@ export class WhatsAppController{
         /*
             Eventos de Adicionar um novo contato
         */
+
+        //Evento de Procurar Contatos 
+        
+        this.el.inputSearchContacts.on('keyup', e=>{
+
+            if(this.el.inputSearchContacts.value.length > 0){
+                this.el.inputSearchContactsPlaceholder.hide();
+            }else{
+                this.el.inputSearchContactsPlaceholder.show();
+            }
+
+            this._user.getContacts(this.el.inputSearchContacts.value);
+
+
+        });
+
 
 
         //Adicionar um novo contato
@@ -542,48 +556,40 @@ export class WhatsAppController{
 
         this.el.btnSendPicture.on('click', e=>{
 
-
-            let regex = /^data:(.+);base64,(.*)$/;
-
-            let result = this.el.pictureCamera.src.match(regex);
-            let mimeType = result[1];
-            let ext = mimeType.split('/')[1];
-            let filename = `camera${Date.now()}.${ext}`;
+            this.el.btnSendPicture.disabled = true;
 
             let picture = new Image();
             picture.src = this.el.pictureCamera.src;
-            picture.onload = e => {
+            picture.onload = () => {
+
                 let canvas = document.createElement('canvas');
                 let context = canvas.getContext('2d');
 
-                canvas.width = picture.width;
-                canvas.height = picture.height;
+                canvas.setAttribute('width', picture.width);
+                canvas.setAttribute('height', picture.height);
 
                 context.translate(picture.width, 0);
                 context.scale(-1, 1);
-
                 context.drawImage(picture, 0, 0, canvas.width, canvas.height);
 
-                
-                fetch(canvas.toDataURL(mimeType))
-                .then(res => { return res.arrayBuffer(); 
-                }).then(buffer => {
-                    return new File([buffer], filename, { type: mimeType });
-                }).then(file => {
-                    Message.sendImage(this._contactActive.chatId, this._user.email, file);
-                    this.el.btnSendPicture.disabled = false;
+                Base64.toFile(canvas.toDataURL(Base64.getMimeType(this.el.pictureCamera.src))).then(file => {
+
+                    Message.sendImage(this._activeContact.chatId, this._user.email, file);
 
                     this.closeAllMainPanel();
-                    this._camera.stop();
+                    this._cameraController.stop();
                     this.el.btnReshootPanelCamera.hide();
                     this.el.pictureCamera.hide();
                     this.el.videoCamera.show();
                     this.el.containerSendPicture.hide();
-                    this.el.containerTakePicture.hide();
+                    this.el.containerTakePicture.show();
                     this.el.panelMessagesContainer.show();
+                    this.el.btnSendPicture.disabled = false;
+
                 });
 
             };
+
 
     });
 
@@ -696,12 +702,22 @@ export class WhatsAppController{
 
         this.el.btnAttachContact.on('click', e=>{
 
-            this.el.modalContacts.show();
+            this._contactsController = new ContactsController( this.el.modalContacts, this._user);
+            this._contactsController.on('select', contact => {
+            Message.sendContact(
+                this._contactActive.chatId,
+                this._userEmail,
+                contact
+            );
+        });
+
+            this._contactsController.open();
+
         });
 
         this.el.btnCloseModalContacts.on('click', e=>{
 
-            this.el.modalContacts.hide();
+            this._contactsController.close();
         });
 
         /*

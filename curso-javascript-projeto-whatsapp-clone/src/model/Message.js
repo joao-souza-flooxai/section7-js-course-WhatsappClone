@@ -1,20 +1,11 @@
-import { Model } from "./Model";
-import { Firebase } from "../util/Firebase";
+import { Model } from './Model'
+import { Firebase } from './../util/Firebase'
 import { Format } from '../util/Format';
 
-
-
-export class Message extends Model{
-
-    constructor(){
-        super();
-    }
+export class Message extends Model {
 
     get content() { return this._data.content; }
     set content(value) { this._data.content = value; }
-
-    get id() { return this._data.id; }
-    set id(value) { this._data.id = value; }
 
     get type() { return this._data.type; }
     set type(value) { this._data.type = value; }
@@ -28,14 +19,11 @@ export class Message extends Model{
     get preview() { return this._data.preview; }
     set preview(value) { this._data.preview = value; }
 
-    get info() { return this._data.info; }
-    set info(value) { this._data.info = value; }
-    
+    get filename() { return this._data.filename; }
+    set filename(value) { this._data.filename = value; }
+
     get fileType() { return this._data.fileType; }
     set fileType(value) { this._data.fileType = value; }
-
-    get fileName() { return this._data.fileName; }
-    set fileName(value) { this._data.fileName = value; }
 
     get size() { return this._data.size; }
     set size(value) { this._data.size = value; }
@@ -43,60 +31,329 @@ export class Message extends Model{
     get from() { return this._data.from; }
     set from(value) { this._data.from = value; }
 
+    get info() { return this._data.info; }
+    set info(value) { this._data.info = value; }
+
+    get photo() { return this._data.photo; }
+    set photo(value) { this._data.photo = value; }
+
+    get duration() { return this._data.duration; }
+    set duration(value) { this._data.duration = value; }
+
+    constructor(){
+
+        super();
+
+        this._locale = 'pt-BR';
+        this._data = {};
+
+    }
+
+    static upload(from, file){
+
+        return new Promise((s, f)=>{
+
+            let uploadTask = Firebase
+                .hd()
+                .ref(from)
+                .child(Date.now() + '_' + file.name)
+                .put(file);
+
+            uploadTask.on('state_changed', snapshot => {
+
+                console.log('upload', snapshot);
+
+            }, err => {
+
+                f(err);
+
+            }, success => {
+
+                s(uploadTask.snapshot);
+
+            });
+
+        });
+
+    }
+
+    static sendAudio(chatId, from, file, metadata, photo){
+
+        return Message.send(chatId, from, 'audio', '', false).then(msgRef => {
+
+            Message.upload(from, file).then(snapshot => {
+
+                console.log('metadata', metadata);
+
+                msgRef.set({
+                    content: snapshot.downloadURL,
+                    photo,
+                    duration: metadata.duration,
+                    status: 'sent'
+                }, {
+                    merge: true
+                });
+
+            });
+
+        });        
+
+    }
+
+    static sendContact(chatId, from, contact){
+
+        return Message.send(chatId, from, 'contact', contact);
+
+    }
+
+    static sendDocument(chatId, from, documentFile, imageFile, pdfInfo) {
+
+        return Message.send(chatId, from, 'document', '', false).then(msgRef => {
+
+            Message.upload(from, documentFile).then(snapshot=>{
+
+                let fileDocumentDownload = snapshot.downloadURL;
+
+                if (imageFile) {
+
+                    Message.upload(from, imageFile).then(snapshot => {
+
+                        let fileImageDownload = snapshot.downloadURL;
+
+                        msgRef.set({
+                            content: fileDocumentDownload,
+                            preview: fileImageDownload,
+                            filename: documentFile.name,
+                            size: documentFile.size,
+                            info: pdfInfo,
+                            fileType: documentFile.type,
+                            status: 'sent'
+                        }, {
+                            merge: true
+                        });
+
+                    });
+
+                } else {
+
+                    msgRef.set({
+                        content: fileDocumentDownload,
+                        filename: documentFile.name,
+                        size: documentFile.size,
+                        fileType: documentFile.type,
+                        status: 'sent'
+                    }, {
+                        merge: true
+                    });
+
+                }
+
+            });            
+
+        });
+
+    }
+
+    static sendImage(chatId, from, file){
+
+        return Message.send(chatId, from, 'image', '', false).then(msgRef => {
+
+            Message.upload(from, file).then(snapshot=>{
+
+                msgRef.set({
+                    content: snapshot.downloadURL,
+                    status: 'sent'
+                }, {
+                    merge: true
+                });
+
+            });
+
+        });
+
+    }
+
+    static send(chatId, from, type, content, setSent = true){
+
+        return new Promise((s, f)=>{
+
+            let promiseSent = Message.getRef(chatId).add({
+                content,
+                from,
+                type,
+                timeStamp: new Date(),
+                status: 'wait'
+            });
+            
+            if (setSent) {
+
+                promiseSent.then(result => {
+
+                    let docRef = result.parent.doc(result.id);
+
+                    s(docRef.set({
+                        status: 'sent'
+                    }, {
+                        merge: true
+                    }));
+
+                }).catch(err=>{ f(err); });
+
+            } else {
+
+                s(promiseSent);
+
+            }
+
+        });
+
+    }
+
+    static getRef(chatId){
+
+        return Firebase.db().collection('chats').doc(chatId).collection('messages');
+
+    }
 
     getViewElement(me = true){
 
-        let div = document.createElement('div');
+        let element = document.createElement('div');
 
-        div.className = 'message';
+        element.className = 'message';
 
-        switch(this.type){
+        switch (this.type) {
 
             case 'contact':
-                div.innerHTML =  
-                    `
-                        <div class="_3_7SH kNKwo tail">
-                            <span class="tail-container"></span>
-                            <span class="tail-container highlight"></span>
-                            <div class="_1YNgi copyable-text">
-                                <div class="_3DZ69" role="button">
-                                    <div class="_20hTB">
-                                        <div class="_1WliW" style="height: 49px; width: 49px;">
-                                            <img src="#" class="Qgzj8 gqwaM photo-contact-sended" style="display:none">
-                                            <div class="_3ZW2E">
-                                                <span data-icon="default-user">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 212 212" width="212" height="212">
-                                                        <path fill="#DFE5E7" d="M106.251.5C164.653.5 212 47.846 212 106.25S164.653 212 106.25 212C47.846 212 .5 164.654.5 106.25S47.846.5 106.251.5z"></path>
-                                                        <g fill="#FFF">
-                                                            <path d="M173.561 171.615a62.767 62.767 0 0 0-2.065-2.955 67.7 67.7 0 0 0-2.608-3.299 70.112 70.112 0 0 0-3.184-3.527 71.097 71.097 0 0 0-5.924-5.47 72.458 72.458 0 0 0-10.204-7.026 75.2 75.2 0 0 0-5.98-3.055c-.062-.028-.118-.059-.18-.087-9.792-4.44-22.106-7.529-37.416-7.529s-27.624 3.089-37.416 7.529c-.338.153-.653.318-.985.474a75.37 75.37 0 0 0-6.229 3.298 72.589 72.589 0 0 0-9.15 6.395 71.243 71.243 0 0 0-5.924 5.47 70.064 70.064 0 0 0-3.184 3.527 67.142 67.142 0 0 0-2.609 3.299 63.292 63.292 0 0 0-2.065 2.955 56.33 56.33 0 0 0-1.447 2.324c-.033.056-.073.119-.104.174a47.92 47.92 0 0 0-1.07 1.926c-.559 1.068-.818 1.678-.818 1.678v.398c18.285 17.927 43.322 28.985 70.945 28.985 27.678 0 52.761-11.103 71.055-29.095v-.289s-.619-1.45-1.992-3.778a58.346 58.346 0 0 0-1.446-2.322zM106.002 125.5c2.645 0 5.212-.253 7.68-.737a38.272 38.272 0 0 0 3.624-.896 37.124 37.124 0 0 0 5.12-1.958 36.307 36.307 0 0 0 6.15-3.67 35.923 35.923 0 0 0 9.489-10.48 36.558 36.558 0 0 0 2.422-4.84 37.051 37.051 0 0 0 1.716-5.25c.299-1.208.542-2.443.725-3.701.275-1.887.417-3.827.417-5.811s-.142-3.925-.417-5.811a38.734 38.734 0 0 0-1.215-5.494 36.68 36.68 0 0 0-3.648-8.298 35.923 35.923 0 0 0-9.489-10.48 36.347 36.347 0 0 0-6.15-3.67 37.124 37.124 0 0 0-5.12-1.958 37.67 37.67 0 0 0-3.624-.896 39.875 39.875 0 0 0-7.68-.737c-21.162 0-37.345 16.183-37.345 37.345 0 21.159 16.183 37.342 37.345 37.342z"></path>
-                                                        </g>
-                                                    </svg>
-                                                </span>
+                element.innerHTML = `
+                    <div class="_3_7SH kNKwo tail">
+                        <span class="tail-container"></span>
+                        <span class="tail-container highlight"></span>
+                        <div class="_1YNgi copyable-text">
+                            <div class="_3DZ69" role="button">
+                                <div class="_20hTB">
+                                    <div class="_1WliW" style="height: 49px; width: 49px;">
+                                        <img src="#" class="Qgzj8 gqwaM photo-contact-sended" style="display:none">
+                                        <div class="_3ZW2E">
+                                            <span data-icon="default-user">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 212 212" width="212" height="212">
+                                                    <path fill="#DFE5E7" d="M106.251.5C164.653.5 212 47.846 212 106.25S164.653 212 106.25 212C47.846 212 .5 164.654.5 106.25S47.846.5 106.251.5z"></path>
+                                                    <g fill="#FFF">
+                                                        <path d="M173.561 171.615a62.767 62.767 0 0 0-2.065-2.955 67.7 67.7 0 0 0-2.608-3.299 70.112 70.112 0 0 0-3.184-3.527 71.097 71.097 0 0 0-5.924-5.47 72.458 72.458 0 0 0-10.204-7.026 75.2 75.2 0 0 0-5.98-3.055c-.062-.028-.118-.059-.18-.087-9.792-4.44-22.106-7.529-37.416-7.529s-27.624 3.089-37.416 7.529c-.338.153-.653.318-.985.474a75.37 75.37 0 0 0-6.229 3.298 72.589 72.589 0 0 0-9.15 6.395 71.243 71.243 0 0 0-5.924 5.47 70.064 70.064 0 0 0-3.184 3.527 67.142 67.142 0 0 0-2.609 3.299 63.292 63.292 0 0 0-2.065 2.955 56.33 56.33 0 0 0-1.447 2.324c-.033.056-.073.119-.104.174a47.92 47.92 0 0 0-1.07 1.926c-.559 1.068-.818 1.678-.818 1.678v.398c18.285 17.927 43.322 28.985 70.945 28.985 27.678 0 52.761-11.103 71.055-29.095v-.289s-.619-1.45-1.992-3.778a58.346 58.346 0 0 0-1.446-2.322zM106.002 125.5c2.645 0 5.212-.253 7.68-.737a38.272 38.272 0 0 0 3.624-.896 37.124 37.124 0 0 0 5.12-1.958 36.307 36.307 0 0 0 6.15-3.67 35.923 35.923 0 0 0 9.489-10.48 36.558 36.558 0 0 0 2.422-4.84 37.051 37.051 0 0 0 1.716-5.25c.299-1.208.542-2.443.725-3.701.275-1.887.417-3.827.417-5.811s-.142-3.925-.417-5.811a38.734 38.734 0 0 0-1.215-5.494 36.68 36.68 0 0 0-3.648-8.298 35.923 35.923 0 0 0-9.489-10.48 36.347 36.347 0 0 0-6.15-3.67 37.124 37.124 0 0 0-5.12-1.958 37.67 37.67 0 0 0-3.624-.896 39.875 39.875 0 0 0-7.68-.737c-21.162 0-37.345 16.183-37.345 37.345 0 21.159 16.183 37.342 37.345 37.342z"></path>
+                                                    </g>
+                                                </svg>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="_1lC8v">
+                                    <div dir="ltr" class="_3gkvk selectable-text invisible-space copyable-text">${this.content.name}</div>
+                                </div>
+                                <div class="_3a5-b">
+                                    <div class="_1DZAH" role="button">
+                                        <span class="message-time">${Format.timeStampToTime(this.timeStamp)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="_6qEXM">
+                                <div class="btn-message-send" role="button">Enviar mensagem</div>
+                            </div>
+                        </div>
+
+                    </div>
+                `;
+
+            if (this.content.photo) {
+
+                let img = element.querySelector('.photo-contact-sended');
+                img.src = this.content.photo;
+                img.show();
+
+            }
+
+            break;
+
+            case 'document':
+                element.innerHTML = `
+                    <div class="_3_7SH _1ZPgd">
+                            <div class="_1fnMt _2CORf">
+                                <a class="_1vKRe" href="#">
+                                    <div class="_2jTyA" style="background-image: url(${this.preview})"></div>
+                                    <div class="_12xX7">
+                                        <div class="_3eW69">
+                                            <div class="JdzFp message-file-icon"></div>
+                                        </div>
+                                        <div class="nxILt">
+                                            <span dir="auto" class="message-filename">${this.filename}</span>
+                                        </div>
+                                        <div class="_17viz">
+                                            <span data-icon="audio-download" class="message-file-download">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 34" width="34" height="34">
+                                                    <path fill="#263238" fill-opacity=".5" d="M17 2c8.3 0 15 6.7 15 15s-6.7 15-15 15S2 25.3 2 17 8.7 2 17 2m0-1C8.2 1 1 8.2 1 17s7.2 16 16 16 16-7.2 16-16S25.8 1 17 1z"></path>
+                                                    <path fill="#263238" fill-opacity=".5" d="M22.4 17.5h-3.2v-6.8c0-.4-.3-.7-.7-.7h-3.2c-.4 0-.7.3-.7.7v6.8h-3.2c-.6 0-.8.4-.4.8l5 5.3c.5.7 1 .5 1.5 0l5-5.3c.7-.5.5-.8-.1-.8z"></path>
+                                                </svg>
+                                            </span>
+                                            <div class="_3SUnz message-file-load" style="display:none">
+                                                <svg class="_1UDDE" width="32" height="32" viewBox="0 0 43 43">
+                                                    <circle class="_3GbTq _37WZ9" cx="21.5" cy="21.5" r="20" fill="none" stroke-width="3"></circle>
+                                                </svg>
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="_1lC8v">
-                                        <div dir="ltr" class="_3gkvk selectable-text invisible-space copyable-text">Nome do Contato Anexado</div>
-                                    </div>
-                                    <div class="_3a5-b">
-                                        <div class="_1DZAH" role="button">
-                                            <span class="message-time">${Format.timeStampToTime(this.timeStamp)}</span>
-                                            
-                                        </div>
-                                    </div>
+                                </a>
+                                <div class="_3cMIj">
+                                    <span class="PyPig message-file-info">${this.info}</span>
+                                    <span class="PyPig message-file-type">${this.fileType}</span>
+                                    <span class="PyPig message-file-size">${this.size}</span>
                                 </div>
-                                <div class="_6qEXM">
-                                    <div class="btn-message-send" role="button">Enviar mensagem</div>
+                                <div class="_3Lj_s">
+                                    <div class="_1DZAH" role="button">
+                                        <span class="message-time">${Format.timeStampToTime(this.timeStamp)}</span>
+                                    </div>
                                 </div>
                             </div>
-
                         </div>
-                    `;
-            break;
+                `;
+
+                let iconEl = element.querySelector('.message-file-icon');
+
+                switch (this.fileType) {
+
+                    case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                    case 'application/msword':
+                        iconEl.classList.value = 'jcxhw icon-doc-doc';
+                        break;
+
+                    case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+                    case 'application/vnd.ms-excel':
+                        iconEl.classList.value = 'jcxhw icon-doc-xls';
+                        break;
+
+                    case 'application/vnd.ms-powerpoint':
+                    case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+                        iconEl.classList.value = 'jcxhw icon-doc-ppt';
+                        break;
+
+                    default:
+                        iconEl.classList.value = 'jcxhw icon-doc-generic';
+
+                }
+
+                element.querySelector('.message-file-download').on('click', e=>{
+
+                    window.open(this.content);
+
+                });
+
+                element.querySelector('._2jTyA').on('click', e=>{
+
+                    window.open(this.preview);
+
+                });
+
+                break;
 
             case 'image':
-                div.innerHTML =  
-                `
+                element.innerHTML = `
                     <div class="_3_7SH _3qMSo">
                         <div class="KYpDv">
                             <div>
@@ -121,9 +378,8 @@ export class Message extends Model{
                                     <div class="_1i3Za"></div>
                                 </div>
                                 <div class="_2TvOE">
-                                    <div class="_1DZAH text-white" role="button">
-                                        <span class="message-time">${Format.timeStampToTime(this.timeStamp)}</span>
-                                        
+                                    <div class="_1DZAH" role="button">
+                                        <span class="message-time text-white">${Format.timeStampToTime(this.timeStamp)}</span>
                                     </div>
                                 </div>
                             </div>
@@ -136,90 +392,46 @@ export class Message extends Model{
                                 </svg>
                             </span>
                         </div>
-                    </div>                                  
+                    </div>
                 `;
 
-                div.querySelector('.message-photo').on('load', e=>{
-                    div.querySelector('.message-photo').show();
-                    div.querySelector('_340lu').hide();
-                    div.querySelector('_3c3PK').css({
+                element.querySelector('.message-photo').on('load', function(){
+
+                    this.show();
+
+                    element.querySelector('._34Olu').hide();
+
+                    element.querySelector('._3v3PK').css({
                         height: 'auto'
                     });
-                    
+
+                }).on('click', function(){
+
+                    window.open(this.src);
+
                 });
 
-            break;
-
-            case 'document':
-                div.innerHTML =  
-                `
-                    <div class="_3_7SH _1ZPgd">
-                        <div class="_1fnMt _2CORf">
-                            <a class="_1vKRe" href="#">
-                                <div class="_2jTyA" style="background-image: url(${this.preview})"></div>
-                                <div class="_12xX7">
-                                    <div class="_3eW69">
-                                        <div class="JdzFp message-file-icon icon-doc-pdf"></div>
-                                    </div>
-                                    <div class="nxILt">
-                                        <span dir="auto" class="message-filename">${this.filename}</span>
-                                    </div>
-                                    <div class="_17viz">
-                                        <span data-icon="audio-download" class="message-file-download">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 34" width="34" height="34">
-                                                <path fill="#263238" fill-opacity=".5" d="M17 2c8.3 0 15 6.7 15 15s-6.7 15-15 15S2 25.3 2 17 8.7 2 17 2m0-1C8.2 1 1 8.2 1 17s7.2 16 16 16 16-7.2 16-16S25.8 1 17 1z"></path>
-                                                <path fill="#263238" fill-opacity=".5" d="M22.4 17.5h-3.2v-6.8c0-.4-.3-.7-.7-.7h-3.2c-.4 0-.7.3-.7.7v6.8h-3.2c-.6 0-.8.4-.4.8l5 5.3c.5.7 1 .5 1.5 0l5-5.3c.7-.5.5-.8-.1-.8z"></path>
-                                            </svg>
-                                        </span>
-                                        <div class="_3SUnz message-file-load" style="display:none">
-                                            <svg class="_1UDDE" width="32" height="32" viewBox="0 0 43 43">
-                                                <circle class="_3GbTq _37WZ9" cx="21.5" cy="21.5" r="20" fill="none" stroke-width="3"></circle>
-                                            </svg>
-                                        </div>
-                                    </div>
-                                </div>
-                            </a>
-                            <div class="_3cMIj">
-                                <span class="PyPig message-file-info">${this.info}</span>
-                                <span class="PyPig message-file-type">${this.fileType}</span>
-                                <span class="PyPig message-file-size">${this.size}</span>
-                            </div>
-                            <div class="_3Lj_s">
-                                <div class="_1DZAH" role="button">
-                                    <span class="message-time">${Format.timeStampToTime(this.timeStamp)}</span>
-                                   
-                                </div>
-                            </div>
-                        </div>
-                    </div>                      
-                `;
-
-                div.on('click', e => {
-                    window.open(this.content);
-                });
-
-            break;
+                break;
 
             case 'audio':
-                div.innerHTML =  
-                `
+                element.innerHTML = `
                     <div class="_3_7SH _17oKL">
                         <div class="_2N_Df LKbsn">
                             <div class="_2jfIu">
                                 <div class="_2cfqh">
                                     <div class="_1QMEq _1kZiz fS1bA">
                                         <div class="E5U9C">
-                                            <svg class="_1UDDE" width="34" height="34" viewBox="0 0 43 43">
+                                            <svg class="_1UDDE audio-load" width="34" height="34" viewBox="0 0 43 43">
                                                 <circle class="_3GbTq _37WZ9" cx="21.5" cy="21.5" r="20" fill="none" stroke-width="3"></circle>
                                             </svg>
-                                            <button class="_2pQE3" class="btn-audio-play" style="display:none">
+                                            <button class="_2pQE3 audio-play" style="display:none">
                                                 <span data-icon="audio-play">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 34" width="34" height="34">
                                                         <path fill="#263238" fill-opacity=".5" d="M8.5 8.7c0-1.7 1.2-2.4 2.6-1.5l14.4 8.3c1.4.8 1.4 2.2 0 3l-14.4 8.3c-1.4.8-2.6.2-2.6-1.5V8.7z"></path>
                                                     </svg>
                                                 </span>
                                             </button>
-                                            <button class="_2pQE3" class="btn-audio-pause">
+                                            <button class="_2pQE3 audio-pause" style="display:none">
                                                 <span data-icon="audio-pause">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 34" width="34" height="34">
                                                         <path fill="#263238" fill-opacity=".5" d="M9.2 25c0 .5.4 1 .9 1h3.6c.5 0 .9-.4.9-1V9c0-.5-.4-.9-.9-.9h-3.6c-.4-.1-.9.3-.9.9v16zm11-17c-.5 0-1 .4-1 .9V25c0 .5.4 1 1 1h3.6c.5 0 1-.4 1-1V9c0-.5-.4-.9-1-.9 0-.1-3.6-.1-3.6-.1z"></path>
@@ -228,11 +440,13 @@ export class Message extends Model{
                                             </button>
                                         </div>
                                         <div class="_1_Gu6">
-                                            <div class="message-audio-duration">0:05</div>
+                                            <div class="message-audio-duration">0:00</div>
                                             <div class="_1sLSi">
                                                 <span class="nDKsM" style="width: 0%;"></span>
                                                 <input type="range" min="0" max="100" class="_3geJ8" value="0">
-                                                <audio src="#" preload="auto"></audio>
+                                                <audio>
+                                                    <source src="${this.content}" type="audio/webm">
+                                                </audio>
                                             </div>
                                         </div>
                                     </div>
@@ -266,7 +480,6 @@ export class Message extends Model{
                             <div class="_27K_5">
                                 <div class="_1DZAH" role="button">
                                     <span class="message-time">${Format.timeStampToTime(this.timeStamp)}</span>
-                                    
                                 </div>
                             </div>
                         </div>
@@ -278,19 +491,98 @@ export class Message extends Model{
                                 </svg>
                             </span>
                         </div>
-                    </div>       
+                    </div>
                 `;
-            break;
+
+                if (this.photo) {
+
+                    let img = element.querySelector('.message-photo');
+                    img.src = this.photo;
+                    img.show();
+
+                }
+
+                let audio = element.querySelector('audio');
+                let btnPlay = element.querySelector('.audio-play');
+                let btnPause = element.querySelector('.audio-pause');
+                let inputRange = element.querySelector('[type="range"]');
+
+                element.querySelector('.message-audio-duration').innerHTML = Format.toTime(this.duration * 1000);
+
+                audio.onloadeddata = e => {
+
+                    element.querySelector('.audio-load').hide();
+                    btnPlay.show();
+
+                }
+
+                audio.onplay = e => {
+
+                    btnPlay.hide();
+                    btnPause.show();
+
+                }
+
+                audio.onpause = e=> {
+
+                    element.querySelector('.message-audio-duration').innerHTML = Format.toTime(this.duration * 1000);
+                    btnPlay.show();
+                    btnPause.hide();
+
+                }
+
+                audio.ontimeupdate = e => {
+
+                    btnPlay.hide();
+                    btnPause.hide();
+
+                    element.querySelector('.message-audio-duration').innerHTML = Format.toTime(audio.currentTime * 1000);
+                    inputRange.value = (audio.currentTime * 100) / this.duration;
+
+                    if (audio.paused) {
+                        btnPlay.show();
+                    } else {    
+                        btnPause.show();
+                    }
+                    
+                }
+
+                audio.onended = e => {
+
+                    audio.currentTime = 0;
+
+                }
+
+                btnPlay.on('click', e => {
+
+                    audio.play();
+
+                });
+
+                btnPause.on('click', e => {
+
+                    audio.pause();
+
+                });
+
+                inputRange.on('change', e => {
+
+                    audio.currentTime = (inputRange.value * this.duration) / 100;
+
+                });
+
+                break;
 
             default:
-                div.innerHTML =  
-                `
-                    <div class="font-style _3DFk6 tail id="_${this.id}">
+                element.innerHTML = `
+                    <div class="font-style _3DFk6 tail">
                         <span class="tail-container"></span>
                         <span class="tail-container highlight"></span>
                         <div class="Tkt2p">
                             <div class="_3zb-j ZhF0n">
-                                <span dir="ltr" class="selectable-text invisible-space message-text">${this.content}</span>
+                                <span dir="ltr" class="selectable-text invisible-space message-text">
+                                    ${this.content}
+                                </span>
                             </div>
                             <div class="_2f-RV">
                                 <div class="_1DZAH">
@@ -298,197 +590,86 @@ export class Message extends Model{
                                 </div>
                             </div>
                         </div>
-                    </div>                     
+                    </div>
                 `;
+                break;
 
         }
 
-        let className = 'message-in';
+        let classMessage = 'message-in';
 
-        if(me){
+        if (me) {
 
-            className = 'message-out';
-            div.querySelector('.message-time').parentElement.appendChild(this.getStatusViewElement());
+            classMessage = 'message-out';
 
-        }
+            element.querySelector('.message-time').parentElement.appendChild(this.getStatusViewElement());
 
-        div.firstElementChild.classList.add(className);
-        return div;
+            if (this.type === 'image') {
 
-    }
-    static upload(file,from){
+                element.querySelector('.message-status').querySelector('path').attributes.fill.nodeValue = '#FFF';
 
-        return new Promise ((s,f)=>{
-            let uploadTask = Firebase.hd().ref(from).child(Date.now() + '_' + file.name).put(file);
-            
-            uploadTask.on('state_changed', ()=>{
-            
-                console.info("upload"
-                );
+            }
 
-            }, err =>{
-                console.error(err);
-                f();
-            }), ()=>{
-                    s(uploadTask.snapshot);
-            
-            };
-        });
-    }
+        }       
 
-    static sendDocument(chatId, from, file, preview, info){
+        element.firstElementChild.classList.add(classMessage);
 
-        Message.send(chatId, from, 'document', '').then(msgRef=>{
+        return element;
 
-                Message.upload(file, from).then(snapshot=>{
-                    let downloadFile = snapshot.getDownloadURL;
-                    
-                    if(filePreview){
-                        Message.upload(preview, from).then(snapshot2=>{
-                            let downloadPreview = snapshot2.getDownloadURL;
-                            msgRef.set({
-                                content: downloadFile,
-                                preview: downloadPreview,
-                                filename: file.name,
-                                size: file.size,
-                                type: file.type,
-                                status: 'sent',
-                                info
-                            },{
-                                merge: true
-                            });
-                       
-                        });
-                    }else{
-                        msgRef.set({
-                            content: downloadFile,
-                            filename: file.name,
-                            size: file.size,
-                            type: file.type,
-                            status: 'sent'
-                        },{
-                            merge: true
-                        });
-                    }
-
-               });
-    
-            });
-  
-
-
-    }
-
-    static sendImage(chatId, from, file){
-
-        return new Promise ((s,f)=>{
-           
-            Message.upload(file, from).then(snapshot=>{
-                Messsage.send(
-                    chatId, 
-                    email, 
-                    'image', 
-                    snapshot.getDownloadURL()
-                ).then(()=>{
-                    s();
-                });
-
-           });
-        })
-
-    }
-
-    static send(chatId, from, type, content) {
-        return new Promise((s, f) => {
-            Message.getRef(chatId).add({
-                content,
-                timeStamp: new Date(),
-                status: 'wait',
-                type,
-                from
-            }).then(docRef => {  
-                let docRef = docRef.parent.doc(docRef.id);
-                docRef.set({
-                    status: 'sent'
-                }, { merge: true })
-                .then(() => {
-                    s(docRef);
-                })
-                .catch(err => {
-                    console.error("Erro ao atualizar status:", err);
-                    f();
-                });
-            }).catch(err => {
-                console.error("Erro ao enviar mensagem:", err);
-                f();
-            });
-        });
-    }
-    
-
-
-
-    static getRef(chatId){
-        return Firebase.db()
-            .collection('chats')
-            .doc(chatId)
-            .collection('messages');
     }
 
     getStatusViewElement(){
-        let div = document.createElement("div");
-        div.className = 'message-status';
-        switch(this.status){
-            case "wait":
 
-                div.innerHTML = 
-                `
-                    <span data-icon="msg-time">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 15" width="16" height="15">
-                            <path fill="#859479" d="M9.75 7.713H8.244V5.359a.5.5 0 0 0-.5-.5H7.65a.5.5 0 0 0-.5.5v2.947a.5.5 0 0 0 .5.5h.094l.003-.001.003.002h2a.5.5 0 0 0 .5-.5v-.094a.5.5 0 0 0-.5-.5zm0-5.263h-3.5c-1.82 0-3.3 1.48-3.3 3.3v3.5c0 1.82 1.48 3.3 3.3 3.3h3.5c1.82 0 3.3-1.48 3.3-3.3v-3.5c0-1.82-1.48-3.3-3.3-3.3zm2 6.8a2 2 0 0 1-2 2h-3.5a2 2 0 0 1-2-2v-3.5a2 2 0 0 1 2-2h3.5a2 2 0 0 1 2 2v3.5z"></path>
-                        </svg>
-                    </span>
-                `;
+        let messageStatusEl = document.createElement('div');
 
-            break;
+        messageStatusEl.classList.add('message-status');
 
-            case "sent":
-                div.innerHTML =
-                `
-                    <span data-icon="msg-check">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 15" width="16" height="15">
-                            <path fill="#859479" d="M10.91 3.316l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"></path>
-                        </svg>
-                    </span>
-                `
-            break;
-            
-            case "received":
+        switch (this.status) {
 
-                div.innerHTML= 
-                `
-                        <span data-icon="msg-dblcheck">
+            case 'wait':
+                messageStatusEl.innerHTML = `
+                        <span data-icon="msg-time">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 15" width="16" height="15">
-                                <path fill="#859479" d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"></path>
+                                <path fill="#859479" d="M9.75 7.713H8.244V5.359a.5.5 0 0 0-.5-.5H7.65a.5.5 0 0 0-.5.5v2.947a.5.5 0 0 0 .5.5h.094l.003-.001.003.002h2a.5.5 0 0 0 .5-.5v-.094a.5.5 0 0 0-.5-.5zm0-5.263h-3.5c-1.82 0-3.3 1.48-3.3 3.3v3.5c0 1.82 1.48 3.3 3.3 3.3h3.5c1.82 0 3.3-1.48 3.3-3.3v-3.5c0-1.82-1.48-3.3-3.3-3.3zm2 6.8a2 2 0 0 1-2 2h-3.5a2 2 0 0 1-2-2v-3.5a2 2 0 0 1 2-2h3.5a2 2 0 0 1 2 2v3.5z"></path>
                             </svg>
                         </span>
-                `;
+                    `;
+                break;
 
-            break;
+            case 'sent':
+                messageStatusEl.innerHTML = `
+                        <span data-icon="msg-check" class="">
+                            <svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 15" width="16" height="15">
+                                <path fill="#92A58C" d="M10.91 3.316l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"></path>
+                            </svg>
+                        </span>
+                    `;
+                break;
 
-            case "read":
+            case 'received':
+                messageStatusEl.innerHTML = `
+                        <span data-icon="msg-dblcheck">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 15" width="16" height="15">
+                                <path fill="#92A58C" d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"></path>
+                            </svg>
+                        </span>
+                    `;
+                break;
 
-                div.innerHTML = 
-                `
-                    <span data-icon="msg-dblcheck-ack">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 15" width="16" height="15">
-                            <path fill="#4FC3F7" d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"></path>
-                        </svg>
-                    </span>
-                `
+            case 'read':
+                messageStatusEl.innerHTML = `
+                        <span data-icon="msg-dblcheck-ack">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 15" width="16" height="15">
+                                <path fill="#4FC3F7" d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"></path>
+                            </svg>
+                        </span>
+                    `;
+                break;
 
-            break;
         }
-        return div;
+
+        return messageStatusEl;
+
     }
+
 }
