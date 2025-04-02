@@ -1,13 +1,13 @@
 {
-  "scripts":{
+  "scripts": {
     "build": "webpack --config webpack.config.js",
     "start": "webpack-dev-server"
   },
-
   "dependencies": {
+    "firebase": "^4.13.1",
+    "firebase-tools": "^3.18.4",
     "pdfjs-dist": "2.0.489",
     "webpack": "^3.1.0",
-    "webpack-dev-server": "^2.5.1",
-    "firebase": "^4.13.1"
+    "webpack-dev-server": "^2.5.1"
   }
 }

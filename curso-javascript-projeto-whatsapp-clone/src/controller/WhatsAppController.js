@@ -14,7 +14,8 @@ import { Upload } from '../util/Upload';
 export class WhatsAppController{
     
     constructor(){
-        
+        //Propriedades
+        this._active = true;
 
         //Métodos inicializadores
         this._fireabse = new Firebase();
@@ -22,6 +23,7 @@ export class WhatsAppController{
         this.elementsPrototype();
         this.loadElements();
         this.initEvents();
+        this.checkNotifications();
        
     }
     
@@ -105,7 +107,7 @@ export class WhatsAppController{
                                     <span dir="auto" title="${contact.name}" class="_1wjpf">${contact.name}</span>
                                 </div>
                                 <div class="_3Bxar">
-                                    <span class="_3T2VG">${contact.lastMessageTime}</span>
+                                    <span class="_3T2VG">${Format.timeStampToTime(contact.lastMessageTime)}</span>
                                 </div>
                             </div>
                             <div class="_1AwDx">
@@ -120,7 +122,7 @@ export class WhatsAppController{
                                                 </svg>
                                             </span>
                                         </div>
-                                        <span dir="ltr" class="_1wjpf _3NFp9">${contact.lastMessage}</span>
+                                        <span dir="ltr" class="_1wjpf _3NFp9">${Format.timeStampToTime(contact.lastMessage)}</span>
                                         <div class="_3Bxar">
                                             <span>
                                                 <div class="_15G96">
@@ -150,6 +152,62 @@ export class WhatsAppController{
 
         });
         this._user.getContacts();
+    }
+
+    checkNotifications() {
+
+        if (typeof Notification === 'function') {
+
+            if (Notification.permission !== 'granted') {
+
+                this.el.alertNotificationPermission.show();
+
+
+
+            } else {
+
+                this.el.alertNotificationPermission.hide();
+
+            }
+
+            this.el.alertNotificationPermission.on('click', e => {
+
+                Notification.requestPermission(permission => {
+
+                    if (permission === "granted") {
+                        this.el.alertNotificationPermission.hide();
+                        console.info('Notificções permitidas!');
+                    }
+
+                });
+
+            });
+
+        }
+
+    }
+
+    notification(data) {
+
+        if (Notification.permission === 'granted' && !this._active ) {
+
+            let n = new Notification(this._activeContact.name, {
+                icon: this._activeContact.photo,
+                body: data.content
+            });
+
+            let nSound = new Audio('./audio/alert.mp3');
+
+            nSound.currentTime = 0;
+            nSound.play();
+
+            setTimeout(() => {
+
+                if (n) n.close();
+
+            }, 3000);
+
+        }
     }
 
     setActiveChat(contact) {
@@ -186,6 +244,7 @@ export class WhatsAppController{
 
                 if (!this._messagesReceived.filter(msg => { return (msg === docMsg.id) }).length) {
                     this._messagesReceived.push(docMsg.id);
+                    this.notification(data);
                 }
 
                 let message = new Message();
@@ -882,6 +941,20 @@ export class WhatsAppController{
                 this.el.inputText.dispatchEvent(new Event('keyup'));
 
             });
+        });
+
+        //Eventos de notificação
+
+        window.addEventListener('focus', e => {
+
+            this._active = true;
+
+        });
+
+        window.addEventListener('blur', e => {
+
+            this._active = false;
+
         });
 
 
