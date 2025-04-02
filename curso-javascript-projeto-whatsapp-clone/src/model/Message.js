@@ -87,9 +87,12 @@ export class Message extends Model {
 
                 msgRef.set({
                     content: snapshot.downloadURL,
+                    size: file.size,
+                    fileType: file.type,
+                    status: 'sent',
                     photo,
                     duration: metadata.duration,
-                    status: 'sent'
+                    
                 }, {
                     merge: true
                 });
@@ -503,15 +506,15 @@ export class Message extends Model {
                 }
 
                 let audio = element.querySelector('audio');
+                let loadEl = element.querySelector('.audio-load');
                 let btnPlay = element.querySelector('.audio-play');
                 let btnPause = element.querySelector('.audio-pause');
                 let inputRange = element.querySelector('[type="range"]');
-
-                element.querySelector('.message-audio-duration').innerHTML = Format.toTime(this.duration * 1000);
-
+                let durationEl = element.querySelector('.message-audio-duration');
+                durationEl.innerHTML = Format.toTime(this.duration * 1000);
                 audio.onloadeddata = e => {
 
-                    element.querySelector('.audio-load').hide();
+                    loadEl.hide();
                     btnPlay.show();
 
                 }
@@ -525,7 +528,7 @@ export class Message extends Model {
 
                 audio.onpause = e=> {
 
-                    element.querySelector('.message-audio-duration').innerHTML = Format.toTime(this.duration * 1000);
+                    durationEl.innerHTML = Format.toTime(this.duration * 1000);
                     btnPlay.show();
                     btnPause.hide();
 
@@ -536,7 +539,7 @@ export class Message extends Model {
                     btnPlay.hide();
                     btnPause.hide();
 
-                    element.querySelector('.message-audio-duration').innerHTML = Format.toTime(audio.currentTime * 1000);
+                    durationEl.innerHTML = Format.toTime(audio.currentTime * 1000);
                     inputRange.value = (audio.currentTime * 100) / this.duration;
 
                     if (audio.paused) {
