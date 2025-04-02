@@ -706,9 +706,10 @@ export class WhatsAppController{
             this._contactsController.on('select', contact => {
             Message.sendContact(
                 this._contactActive.chatId,
-                this._userEmail,
+                this._user.email,
                 contact
             );
+            this._contactsController.close();
         });
 
             this._contactsController.open();
@@ -716,7 +717,6 @@ export class WhatsAppController{
         });
 
         this.el.btnCloseModalContacts.on('click', e=>{
-
             this._contactsController.close();
         });
 

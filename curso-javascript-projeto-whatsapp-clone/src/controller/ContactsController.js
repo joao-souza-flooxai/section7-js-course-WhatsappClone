@@ -17,9 +17,7 @@ export class ContactsController extends ClassEvent {
 
             this._listEl.innerHTML = '';
 
-            contacts.forEach(doc => {
-
-                let contact = doc.data();
+            contacts.forEach(contact => {
 
                 let item = document.createElement('div');
 
