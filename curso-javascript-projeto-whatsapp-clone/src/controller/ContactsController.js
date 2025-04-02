@@ -83,7 +83,7 @@ export class ContactsController extends ClassEvent {
 
         });
 
-        this._modal.show();
+        this._modalEl.show();
     }
 
 

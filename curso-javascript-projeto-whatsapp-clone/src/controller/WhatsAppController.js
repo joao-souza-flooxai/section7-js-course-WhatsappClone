@@ -525,17 +525,17 @@ export class WhatsAppController{
               'height': 'calc(100% - 10px)' //alterado do video(120px) ve se isso nao vai dar problema
             });
       
-            this._camera = new CameraController(this.el.videoCamera);
+            this._cameraController = new CameraController(this.el.videoCamera);
           });
       
           this.el.btnClosePanelCamera.on('click', e=>{
                 this.closeAllMainPanel();
                 this.el.panelMessagesContainer.show();
-                this._camera.stop();
+                this._cameraController.stop();
           })
       
         this.el.btnTakePicture.on('click', e=>{
-                let dataUrl = this._camera.takePicture();
+                let dataUrl = this._cameraController.takePicture();
                 
                 //Manipulando os elementos da tela
                 this.el.pictureCamera.src = dataUrl;
@@ -574,7 +574,7 @@ export class WhatsAppController{
 
                 Base64.toFile(canvas.toDataURL(Base64.getMimeType(this.el.pictureCamera.src))).then(file => {
 
-                    Message.sendImage(this._activeContact.chatId, this._user.email, file);
+                    Message.sendImage(this._contactActive.chatId, this._user.email, file);
 
                     this.closeAllMainPanel();
                     this._cameraController.stop();
@@ -750,6 +750,20 @@ export class WhatsAppController{
         });
 
         this.el.btnFinishMicrophone.on('click', ev=>{
+
+            this._microphoneController.on('recorded', (file, metadata) => {
+
+                Message.sendAudio(
+                    this._contactActive.chatId, 
+                    this._user.email, 
+                    file, 
+                    metadata,
+                    this._user.photo);
+
+            });
+
+            this.closeRecordMicrophone();
+
             this.closeRecordMicrophone();
             this._microphoneController.stopRecorder();
         });
